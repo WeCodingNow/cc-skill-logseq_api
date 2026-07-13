@@ -184,6 +184,12 @@ def format_metadata_value(value):
         return json.dumps(value)
     if isinstance(value, list):
         return ", ".join(format_metadata_value(v) for v in value)
+    if value is True:
+        return "true"
+    if value is False:
+        return "false"
+    if value is None:
+        return "null"
     return str(value)
 
 
