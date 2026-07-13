@@ -1,0 +1,15 @@
+[
+  {
+    "content": "TODO write docs",
+    "marker": "TODO",
+    "children": [
+      {
+        "content": "",
+        "children": [
+          {"content": "nested under empty", "children": []}
+        ]
+      },
+      {"content": "DONE done thing", "marker": "DONE", "children": []}
+    ]
+  }
+]
