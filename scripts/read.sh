@@ -35,6 +35,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+array_contains() {
+  local needle="$1"; shift
+  local x
+  for x in "$@"; do
+    [[ "$needle" == "$x" ]] && return 0
+  done
+  return 1
+}
+
 raw=false
 depth=1
 ref_depth=5
@@ -127,12 +136,9 @@ fi
 method="$1"
 
 allowed=false
-for m in "${READ_ONLY_METHODS[@]}"; do
-  if [[ "$method" == "$m" ]]; then
-    allowed=true
-    break
-  fi
-done
+if array_contains "$method" "${READ_ONLY_METHODS[@]}"; then
+  allowed=true
+fi
 
 if [[ "$allowed" != true ]]; then
   echo "error: '${method}' is not on read.sh's read-only allow-list." >&2
@@ -161,19 +167,10 @@ QUERY_METHODS=(
 )
 
 mode=""
-for m in "${TREE_METHODS[@]}"; do
-  if [[ "$method" == "$m" ]]; then
-    mode="tree"
-    break
-  fi
-done
-if [[ -z "$mode" ]]; then
-  for m in "${QUERY_METHODS[@]}"; do
-    if [[ "$method" == "$m" ]]; then
-      mode="query"
-      break
-    fi
-  done
+if array_contains "$method" "${TREE_METHODS[@]}"; then
+  mode="tree"
+elif array_contains "$method" "${QUERY_METHODS[@]}"; then
+  mode="query"
 fi
 
 if [[ -z "$mode" ]]; then
