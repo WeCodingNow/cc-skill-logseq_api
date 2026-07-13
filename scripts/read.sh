@@ -5,10 +5,18 @@
 # auto-approve in permission config without approving call.sh itself.
 #
 # Usage:
-#   read.sh <method> [json-args-array]
+#   read.sh [--raw] [--depth N] <method> [json-args-array]
+#
+# By default, block-tree methods (getPageBlocksTree, getBlock, ...) and datalog
+# query methods (datascriptQuery, q, customQuery) are rendered as a text outline
+# instead of raw JSON — see render_outline.py for the format. Pass --raw to get
+# the old pretty-JSON behavior for any method. --depth N (default 1) controls how
+# many levels of nested block embeds get fully expanded inline.
 #
 # Examples:
 #   read.sh logseq.Editor.getPageBlocksTree '["My Page"]'
+#   read.sh --raw logseq.Editor.getPageBlocksTree '["My Page"]'
+#   read.sh --depth 2 logseq.Editor.getPageBlocksTree '["My Page"]'
 #   read.sh logseq.DB.datascriptQuery '["[:find (pull ?b [*]) :where [?b :block/marker \"TODO\"]]"]'
 #
 # The allow-list is curated by hand from the Logseq Plugin API's IAppProxy/IEditorProxy/
@@ -22,6 +30,29 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+raw=false
+depth=1
+while [[ $# -gt 0 && "$1" == --* ]]; do
+  case "$1" in
+    --raw)
+      raw=true
+      shift
+      ;;
+    --depth)
+      if [[ $# -lt 2 ]]; then
+        echo "error: --depth requires a value" >&2
+        exit 1
+      fi
+      depth="$2"
+      shift 2
+      ;;
+    *)
+      echo "error: unknown flag '$1'" >&2
+      exit 1
+      ;;
+  esac
+done
 
 # Curated from the Logseq Plugin API's IAppProxy/IEditorProxy/IDBProxy interfaces, then
 # pruned to what this HTTP bridge actually implements (Logseq's exposed method set is a
@@ -66,7 +97,12 @@ READ_ONLY_METHODS=(
 )
 
 if [[ $# -lt 1 ]]; then
-  echo "usage: $0 <method> [json-args-array]" >&2
+  echo "usage: $0 [--raw] [--depth N] <method> [json-args-array]" >&2
+  exit 1
+fi
+
+if ! [[ "$depth" =~ ^[0-9]+$ ]]; then
+  echo "error: --depth must be a non-negative integer, got: $depth" >&2
   exit 1
 fi
 
@@ -87,4 +123,50 @@ if [[ "$allowed" != true ]]; then
   exit 1
 fi
 
-exec "${SCRIPT_DIR}/call.sh" "$@"
+if [[ "$raw" == true ]]; then
+  exec "${SCRIPT_DIR}/call.sh" "$@"
+fi
+
+# Methods whose result is a block/page tree, rendered via --mode tree.
+TREE_METHODS=(
+  logseq.Editor.getCurrentPageBlocksTree
+  logseq.Editor.getPageBlocksTree
+  logseq.Editor.getBlock
+  logseq.Editor.getPagesTreeFromNamespace
+)
+
+# Methods whose result is datalog query rows, rendered via --mode query.
+QUERY_METHODS=(
+  logseq.DB.q
+  logseq.DB.customQuery
+  logseq.DB.datascriptQuery
+)
+
+mode=""
+for m in "${TREE_METHODS[@]}"; do
+  if [[ "$method" == "$m" ]]; then
+    mode="tree"
+    break
+  fi
+done
+if [[ -z "$mode" ]]; then
+  for m in "${QUERY_METHODS[@]}"; do
+    if [[ "$method" == "$m" ]]; then
+      mode="query"
+      break
+    fi
+  done
+fi
+
+if [[ -z "$mode" ]]; then
+  # Flat metadata methods (getCurrentGraph, getUserConfigs, ...) — nothing to
+  # outline, just pretty-print like today.
+  exec "${SCRIPT_DIR}/call.sh" "$@"
+fi
+
+if ! response="$("${SCRIPT_DIR}/call.sh" "$@")"; then
+  # call.sh already printed its own error to stderr.
+  exit 1
+fi
+
+printf '%s' "$response" | python3 "${SCRIPT_DIR}/render_outline.py" --mode "$mode" --depth "$depth"

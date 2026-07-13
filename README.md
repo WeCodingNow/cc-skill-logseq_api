@@ -21,6 +21,7 @@ ln -s /path/to/cc-skill-logseq_api ~/.claude/skills/logseq-api
 - Logseq running locally with the HTTP APIs server enabled: Settings > Features > "Enable HTTP APIs server", then the 🔌/API icon in the toolbar > "Start server", then generate a token.
 - That token exported as `LOGSEQ_TOKEN` in your shell environment.
 - `curl` and `jq` on `PATH` (used by `scripts/call.sh`).
+- `python3` on `PATH` (used by `scripts/read.sh` to render the default text outline; `--raw` doesn't need it).
 
 ## Layout
 
@@ -28,6 +29,7 @@ ln -s /path/to/cc-skill-logseq_api ~/.claude/skills/logseq-api
 SKILL.md                     - the skill itself: workflows, conventions, when to use which script
 scripts/call.sh               - low-level caller: auth header + JSON encoding, used for any API call
 scripts/read.sh                - call.sh wrapped with a hardcoded allow-list of non-mutating methods
+scripts/render_outline.py      - text-outline renderer read.sh pipes into by default (--raw skips it)
 references/datascript-query.md - block/page schema + query patterns for logseq.DB.datascriptQuery
 ```
 
