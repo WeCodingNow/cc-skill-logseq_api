@@ -10,6 +10,11 @@ Used by read.sh as its default (non---raw) output path. Two input shapes:
 Inline `((uuid))` block references and `{{embed ((uuid))}}` block embeds found
 in block content are resolved via extra logseq.Editor.getBlock calls (shelled
 out to call.sh, so auth/URL handling isn't duplicated here), cached per-run.
+
+Plain `((uuid))` references chase chains of pointer blocks to their final text
+regardless of `--depth`, bounded only by `--ref-depth` (a cycle guard, default
+5) — `--depth` only limits how many levels of nested block *embeds* get
+expanded.
 """
 
 import argparse
