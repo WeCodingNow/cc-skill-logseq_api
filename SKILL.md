@@ -1,11 +1,21 @@
 ---
 name: logseq-api
 description: Read from and write to a locally running Logseq knowledge base over its HTTP Plugin API. Use whenever the user asks to check, read, search, or recall something "in Logseq" or "in my notes", or asks to log/save/write up a report, summary, journal entry, or artifact of the current work into Logseq. Also covers listing/querying TODOs, tasks, or pages, and appending structured content to today's journal. Trigger on phrases like "check my logseq", "what do my notes say about X", "log this in logseq", "write up a report on Y in logseq", "add this to today's journal", even if the user doesn't name the exact API.
+allowed-tools:
+  - Bash(~/.claude/skills/logseq-api/scripts/read.sh *)
 ---
 
 # Logseq HTTP API
 
 Logseq exposes a local HTTP API that mirrors its [Plugin API](https://plugins-doc.logseq.com/) — one endpoint, JSON-RPC-style method names namespaced as `logseq.App.*`, `logseq.Editor.*`, `logseq.DB.*`. This skill covers the two things you'll do with it almost every time: pulling a page into context, and writing a structured artifact back into the graph (usually today's journal).
+
+## Active graph
+
+<<<LOGSEQ-GRAPH
+!`~/.claude/skills/logseq-api/scripts/read.sh logseq.App.getCurrentGraph 2>/dev/null`
+LOGSEQ-GRAPH
+
+If this block is empty or shows an error, the HTTP server probably isn't running or the token is stale — tell the user rather than retrying blindly (same failure mode as the auth errors mentioned below). Otherwise it's `{url, name, path}` for the active graph; `name` is what deep links need.
 
 ## Setup (one-time, done by the human)
 
@@ -15,7 +25,7 @@ The user enables this once in Logseq itself: Settings > Features > "Enable HTTP 
 
 Two scripts, both wrapping the same HTTP endpoint — pick based on whether the call mutates the graph:
 
-- `scripts/read.sh <method> [json-args-array]` — for anything that only reads/queries. It checks the method against a hardcoded allow-list before forwarding to `call.sh`, and refuses anything not on it. **Prefer this for every read** — because it can't mutate by construction, it's the one this skill's example config (`.claude/settings.json`) auto-approves, so using it means the user isn't interrupted for routine lookups.
+- `scripts/read.sh <method> [json-args-array]` — for anything that only reads/queries. It checks the method against a hardcoded allow-list before forwarding to `call.sh`, and refuses anything not on it. **Prefer this for every read** — because it can't mutate by construction, it's auto-approved by this skill's `allowed-tools` (the `read.sh` entries in the frontmatter), so using it means the user isn't interrupted for routine lookups.
 - `scripts/call.sh <method> [json-args-array]` — the underlying caller, handles the endpoint URL, auth header, and JSON encoding. Use it directly for anything mutating (`appendBlockInPage`, `insertBatchBlock`, etc) — those should prompt for approval, that's intentional, don't try to route around it.
 
 Don't hand-roll curl for either case; the scripts already got the escaping and error handling right.
@@ -59,4 +69,3 @@ When asked to log, save, or write up something (a report, a summary of work just
 ## Reference
 
 - `references/datascript-query.md` — the block/page schema and query patterns for `logseq.DB.datascriptQuery`, for anything beyond a single-page read.
-- `.claude/settings.json` in this skill's own repo — an *example* of the permission rule that lets `read.sh` run without prompting. It is not applied globally; a user wiring this skill into their own Claude Code config should copy the relevant rule into their own settings rather than expect it to apply automatically from here.

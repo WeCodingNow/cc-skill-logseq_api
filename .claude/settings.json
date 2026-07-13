@@ -1,8 +1,0 @@
-{
-  "_note": "EXAMPLE ONLY, not applied automatically. This shows how a Claude Code user could allow read.sh to run without a permission prompt, while leaving call.sh (used for mutating calls) prompting as normal. The path below assumes the standard install from README.md (symlinked as ~/.claude/skills/logseq-api) — permission matching is a prefix match on the literal command text, so if you invoke this skill from somewhere else (e.g. running straight out of a repo checkout instead of the symlink), add another 'Bash' entry pointing at that path instead.",
-  "permissions": {
-    "allow": [
-      "Bash(~/.claude/skills/logseq-api/scripts/read.sh *)"
-    ]
-  }
-}

@@ -29,11 +29,14 @@ SKILL.md                     - the skill itself: workflows, conventions, when to
 scripts/call.sh               - low-level caller: auth header + JSON encoding, used for any API call
 scripts/read.sh                - call.sh wrapped with a hardcoded allow-list of non-mutating methods
 references/datascript-query.md - block/page schema + query patterns for logseq.DB.datascriptQuery
-.claude/settings.json          - EXAMPLE permission config, not applied automatically (see below)
 ```
 
 ## Reducing permission prompts for reads
 
-`scripts/read.sh` only forwards calls whose method is on a curated read-only allow-list (see the comment at the top of the script for why that list can't just be a `logseq.App.*`-style namespace wildcard — some methods in the same namespaces as safe getters are destructive, e.g. `quit`, `relaunch`, `execGitCommand`). Because it can't mutate the graph by construction, it's safe to auto-approve in Claude Code's permission settings, while `call.sh` — used directly for mutating calls like `appendBlockInPage` or `insertBatchBlock` — keeps prompting as normal.
+`scripts/read.sh` only forwards calls whose method is on a curated read-only allow-list (see the comment at the top of the script for why that list can't just be a `logseq.App.*`-style namespace wildcard — some methods in the same namespaces as safe getters are destructive, e.g. `quit`, `relaunch`, `execGitCommand`). Because it can't mutate the graph by construction, it's safe to auto-approve, while `call.sh` — used directly for mutating calls like `appendBlockInPage` or `insertBatchBlock` — keeps prompting as normal.
 
-`.claude/settings.json` in this repo shows the allow-rule for this; it's an example to copy into your own project or user settings; it isn't applied just by this repo existing.
+The skill's own `allowed-tools` frontmatter grants that auto-approval for `read.sh` (and only `read.sh`) while the skill is active — so for the standard symlink install (`~/.claude/skills/logseq-api`) it works out of the box, scoped to when the skill is in use rather than globally.
+
+## Injected graph context
+
+On load, the skill injects the output of `logseq.App.getCurrentGraph` via [dynamic context](https://code.claude.com/docs/en/skills#inject-dynamic-context), so the active graph (and, implicitly, whether the HTTP server is up) is in front of Claude immediately — no manual first call, and an empty/error block is an early signal that the server isn't running or the token is stale.
