@@ -44,8 +44,9 @@ def call_logseq(method, args):
             [CALL_SH, method, json.dumps(args)],
             capture_output=True,
             text=True,
+            timeout=10,
         )
-    except OSError:
+    except (OSError, subprocess.TimeoutExpired):
         return None
     if proc.returncode != 0:
         return None
