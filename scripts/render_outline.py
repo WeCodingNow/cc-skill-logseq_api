@@ -29,6 +29,9 @@ REF_RE = re.compile(r"\(\(([0-9a-fA-F-]+)\)\)")
 # (reference to a reference to a reference...) get chased to their final text
 # instead of showing an unhelpful "[((uuid))]((uuid))".
 FULL_REF_RE = re.compile(r"^\(\(([0-9a-fA-F-]+)\)\)$")
+# A Logseq block property line (`key:: value`), e.g. the `id:: <uuid>` line
+# Logseq appends to any block that gets referenced.
+PROPERTY_LINE_RE = re.compile(r"^[A-Za-z0-9_-]+::\s")
 
 # uuid -> block dict (content only) / uuid -> block dict (with children)
 _content_cache = {}
@@ -86,21 +89,24 @@ def first_line(text):
 
 def resolve_ref_text(uuid, ref_budget, seen):
     """Resolve a plain `((uuid))` reference to display text, chasing chains of
-    pointer blocks (blocks whose *first line* is itself a single reference,
-    e.g. a plain `((uuid))` with only an `id:: ...` property line trailing
-    it) to their final text. `ref_budget` bounds chain length and `seen`
-    guards against cycles — both fall back to showing whatever text is at
-    that point rather than resolving further."""
+    pointer blocks (blocks whose *entire* content is a single reference, plus
+    optionally trailing `key:: value` property lines like Logseq's own
+    `id:: ...`) to their final text. `ref_budget` bounds chain length and
+    `seen` guards against cycles — both fall back to showing whatever text is
+    at that point rather than resolving further."""
     if uuid in seen:
         return f"(({uuid}))"
     block = resolve_block(uuid, include_children=False)
     if block is None:
-        return "(unresolved reference)"
-    line = first_line(block.get("content"))
-    m = FULL_REF_RE.match(line)
-    if m and ref_budget > 0:
-        return resolve_ref_text(m.group(1), ref_budget - 1, seen | {uuid})
-    return line
+        return "unresolved reference"
+    content = (block.get("content") or "").strip()
+    lines = content.splitlines()
+    is_pure_pointer = bool(lines) and FULL_REF_RE.match(lines[0]) and all(
+        PROPERTY_LINE_RE.match(l) for l in lines[1:]
+    )
+    if is_pure_pointer and ref_budget > 0:
+        return resolve_ref_text(FULL_REF_RE.match(lines[0]).group(1), ref_budget - 1, seen | {uuid})
+    return first_line(content)
 
 
 def render_content(content, depth_budget, ref_depth, out_lines, indent):
@@ -116,7 +122,11 @@ def render_content(content, depth_budget, ref_depth, out_lines, indent):
             render_block(block, indent + 1, depth_budget - 1, ref_depth, out_lines, bullet="▸")
             return "(embed, expanded below)"
         block = resolve_block(uuid, include_children=False)
-        text = first_line(block.get("content") if block else None)
+        if block is None:
+            return f"[unresolved embed]((embed {uuid}))"
+        line = first_line(block.get("content"))
+        m = FULL_REF_RE.match(line)
+        text = resolve_ref_text(m.group(1), ref_depth, {uuid}) if m else line
         return f"[{text}]((embed {uuid}))"
 
     without_embeds = EMBED_RE.sub(replace_embed, content)
