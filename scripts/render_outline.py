@@ -57,6 +57,22 @@ def resolve_block(uuid, include_children):
     return block
 
 
+def resolve_child(entry):
+    """Return a hydrated block dict for a `children` array entry.
+
+    Logseq only nests full block objects in `children` when the parent call
+    asked for them (e.g. getPageBlocksTree, or getBlock with
+    includeChildren). Otherwise each entry is an unresolved lookup-ref shaped
+    like `["uuid", "<uuid>"]` — fetch it (with its own children) so the
+    outline doesn't silently drop real content.
+    """
+    if isinstance(entry, dict):
+        return entry
+    if isinstance(entry, list) and len(entry) == 2 and entry[0] == "uuid":
+        return resolve_block(entry[1], include_children=True)
+    return None
+
+
 def first_line(text):
     if not text:
         return "(empty block)"
@@ -94,7 +110,9 @@ def render_block(block, indent, depth_budget, out_lines, bullet="-"):
     content = (block.get("content") or "").strip()
     if content == "":
         for child in block.get("children") or []:
-            render_block(child, indent, depth_budget, out_lines, bullet=bullet)
+            resolved_child = resolve_child(child)
+            if resolved_child is not None:
+                render_block(resolved_child, indent, depth_budget, out_lines, bullet=bullet)
         return
 
     embed_lines = []
@@ -107,7 +125,9 @@ def render_block(block, indent, depth_budget, out_lines, bullet="-"):
     out_lines.extend(embed_lines)
 
     for child in block.get("children") or []:
-        render_block(child, indent + 1, depth_budget, out_lines)
+        resolved_child = resolve_child(child)
+        if resolved_child is not None:
+            render_block(resolved_child, indent + 1, depth_budget, out_lines)
 
 
 def render_tree(data, depth_budget):
@@ -116,8 +136,9 @@ def render_tree(data, depth_budget):
         return "(no results)"
     blocks = data if isinstance(data, list) else [data]
     for block in blocks:
-        if isinstance(block, dict):
-            render_block(block, 0, depth_budget, out_lines)
+        resolved = resolve_child(block)
+        if resolved is not None:
+            render_block(resolved, 0, depth_budget, out_lines)
     return "\n".join(out_lines) if out_lines else "(no results)"
 
 
