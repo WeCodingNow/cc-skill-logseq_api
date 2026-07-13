@@ -5,13 +5,17 @@
 # auto-approve in permission config without approving call.sh itself.
 #
 # Usage:
-#   read.sh [--raw] [--depth N] <method> [json-args-array]
+#   read.sh [--raw] [--depth N] [--ref-depth N] <method> [json-args-array]
 #
 # By default, block-tree methods (getPageBlocksTree, getBlock, ...) and datalog
 # query methods (datascriptQuery, q, customQuery) are rendered as a text outline
 # instead of raw JSON — see render_outline.py for the format. Pass --raw to get
 # the old pretty-JSON behavior for any method. --depth N (default 1) controls how
-# many levels of nested block embeds get fully expanded inline.
+# many levels of nested block embeds get fully expanded inline. --ref-depth N
+# (default 5) bounds how many chained "reference to a reference" hops get
+# resolved before falling back to raw text — guards against reference cycles;
+# plain references otherwise always resolve to their final text regardless of
+# --depth (which only limits embeds).
 #
 # Examples:
 #   read.sh logseq.Editor.getPageBlocksTree '["My Page"]'
@@ -33,6 +37,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 raw=false
 depth=1
+ref_depth=5
 while [[ $# -gt 0 && "$1" == --* ]]; do
   case "$1" in
     --raw)
@@ -45,6 +50,14 @@ while [[ $# -gt 0 && "$1" == --* ]]; do
         exit 1
       fi
       depth="$2"
+      shift 2
+      ;;
+    --ref-depth)
+      if [[ $# -lt 2 ]]; then
+        echo "error: --ref-depth requires a value" >&2
+        exit 1
+      fi
+      ref_depth="$2"
       shift 2
       ;;
     *)
@@ -97,12 +110,17 @@ READ_ONLY_METHODS=(
 )
 
 if [[ $# -lt 1 ]]; then
-  echo "usage: $0 [--raw] [--depth N] <method> [json-args-array]" >&2
+  echo "usage: $0 [--raw] [--depth N] [--ref-depth N] <method> [json-args-array]" >&2
   exit 1
 fi
 
 if ! [[ "$depth" =~ ^[0-9]+$ ]]; then
   echo "error: --depth must be a non-negative integer, got: $depth" >&2
+  exit 1
+fi
+
+if ! [[ "$ref_depth" =~ ^[0-9]+$ ]]; then
+  echo "error: --ref-depth must be a non-negative integer, got: $ref_depth" >&2
   exit 1
 fi
 
@@ -169,4 +187,4 @@ if ! response="$("${SCRIPT_DIR}/call.sh" "$@")"; then
   exit 1
 fi
 
-printf '%s' "$response" | python3 "${SCRIPT_DIR}/render_outline.py" --mode "$mode" --depth "$depth"
+printf '%s' "$response" | python3 "${SCRIPT_DIR}/render_outline.py" --mode "$mode" --depth "$depth" --ref-depth "$ref_depth"
