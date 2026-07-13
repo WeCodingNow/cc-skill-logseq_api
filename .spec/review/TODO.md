@@ -1,0 +1,23 @@
+# Review TODO: worktree-feature+read-sh-outline vs dev
+
+Tracks open items from the branch review in `.spec/review/`. Nothing here has been fixed yet — this is a review-only pass, no code changes were made to `render_outline.py` or `read.sh` as part of it.
+
+## Open
+
+- [ ] **B1 (HIGH)** — Embed-beyond-depth-budget fallback text gets reprocessed as a fresh reference by `REF_RE.sub`, corrupting output with nested brackets when the embed target is itself a pointer block. See [01-bugs.md](./01-bugs.md#b1-high----embed-beyond-depth-budget-fallback-text-is-reprocessed-as-a-fresh-reference-corrupting-output).
+- [ ] **B2 (MEDIUM)** — `resolve_ref_text`'s pointer-chain detection only inspects the first line of a block's content, silently discarding any genuine multi-line pointer-block content (e.g. a reference annotated with a free-text line). See [01-bugs.md](./01-bugs.md#b2-medium----pointer-chain-resolution-only-inspects-the-first-line-silently-discarding-any-other-real-content-in-the-pointer-block).
+- [ ] **B3 (MEDIUM)** — `call_logseq`'s `subprocess.run` has no `timeout=`, so a stalled Logseq API call hangs the entire render indefinitely. See [01-bugs.md](./01-bugs.md#b3-medium----no-subprocess-timeout-a-stalled-logseq-api-call-hangs-the-entire-render-indefinitely).
+- [ ] **R1 (MEDIUM)** — No committed test fixtures despite the original plan specifying a fixture-based test suite; repo has zero test/fixture files, so the exact bugs found in this review (B1, B2) have no regression net going forward. See [02-refactoring.md](./02-refactoring.md#r1-medium----no-committed-regression-tests-despite-the-original-plan-specifying-a-fixture-based-test-suite).
+- [ ] **R2 (LOW)** — `TREE_METHODS` in `read.sh` omits `getSelectedBlocks`/`getPageLinkedReferences`/`getCurrentBlock`, so those allow-listed block-shaped methods silently fall through to raw JSON instead of the outline renderer. See [02-refactoring.md](./02-refactoring.md#r2-low----tree_methods-omits-other-block-shaped-read-methods-which-silently-fall-through-to-raw-json).
+- [ ] **R3 (LOW)** — Three near-identical bash "scan array for match" loops in `read.sh` could be a single reusable function. See [02-refactoring.md](./02-refactoring.md#r3-low----three-near-identical-bash-scan-array-for-match-loops-could-be-a-single-reusable-function).
+- [ ] **Style #1 (LOW)** — `format_metadata_value`'s fallback uses Python-style `str(value)`, rendering booleans/`None` as `True`/`False`/`None` instead of JSON-style lowercase. See [04-style-docs.md](./04-style-docs.md).
+- [ ] **Style #2 (LOW)** — `render_outline.py`'s module docstring doesn't mention `--ref-depth` or the reference-chain-resolution behavior. See [04-style-docs.md](./04-style-docs.md).
+- [ ] **Style #3 (LOW)** — Inconsistent wording between `(unresolved reference)` (bare parenthetical, no uuid) and `[unresolved embed]((embed uuid))` (bracket-wrapped, uuid visible) for analogous "couldn't resolve" cases. See [04-style-docs.md](./04-style-docs.md).
+
+## Not an issue
+
+- Security: no vulnerabilities found in this diff — see [03-security.md](./03-security.md) for the checks performed.
+
+## Counts (must match `00-overview.md`)
+
+CRITICAL: 0 · HIGH: 1 (B1) · MEDIUM: 3 (B2, B3, R1) · LOW: 5 (R2, R3, Style #1-3)
