@@ -152,11 +152,17 @@ if [[ "$raw" == true ]]; then
 fi
 
 # Methods whose result is a block/page tree, rendered via --mode tree.
+# getPageLinkedReferences is deliberately NOT here: it returns
+# Array<[PageEntity, BlockEntity[]]> (page+blocks pairs), a different shape
+# render_tree's resolve_child doesn't unwrap -- adding it would silently
+# mis-render as "(no results)" instead of falling through to raw JSON.
 TREE_METHODS=(
   logseq.Editor.getCurrentPageBlocksTree
   logseq.Editor.getPageBlocksTree
   logseq.Editor.getBlock
   logseq.Editor.getPagesTreeFromNamespace
+  logseq.Editor.getSelectedBlocks
+  logseq.Editor.getCurrentBlock
 )
 
 # Methods whose result is datalog query rows, rendered via --mode query.
