@@ -11,9 +11,7 @@ Logseq exposes a local HTTP API that mirrors its [Plugin API](https://plugins-do
 
 ## Active graph
 
-<<<LOGSEQ-GRAPH
-!`${CLAUDE_SKILL_DIR}/scripts/read.sh logseq.App.getCurrentGraph 2>/dev/null`
-LOGSEQ-GRAPH
+Current active graph: !`${CLAUDE_SKILL_DIR}/scripts/read.sh logseq.App.getCurrentGraph 2>/dev/null`
 
 If this block is empty or shows an error, the HTTP server probably isn't running or the token is stale — tell the user rather than retrying blindly (same failure mode as the auth errors mentioned below). Otherwise it's `{url, name, path}` for the active graph; `name` is what deep links need.
 
